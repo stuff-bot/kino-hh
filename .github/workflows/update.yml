@@ -42,7 +42,7 @@ jobs:
           git config user.name "kino-bot"
           git config user.email "kino-bot@users.noreply.github.com"
           git add site/data.json
-          git diff --cached --quiet || (git commit -m "Programm aktualisiert" && git push)
+          git diff --cached --quiet || (git commit -m "Programm aktualisiert" && (git pull --rebase -X theirs && git push || echo "Push übersprungen"))
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
