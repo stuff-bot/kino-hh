@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<!-- kein viewport-fit=cover: siehe ~/.claude/playbooks/ios-standalone-weisser-rand.md -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=auto">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Kino HH">
+<meta name="theme-color" content="#0d0e12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Kino HH</title>
+<style>
+:root{
+  --bg:#0d0e12; --surface:#16181f; --surface2:#1f222b; --line:#2a2e39;
+  --text:#f3f3f6; --muted:#9a9fac; --faint:#6b7080;
+  --accent:#ffb547; --accent-ink:#1a1204;
+  --r:14px;
+  color-scheme: dark;
+}
+/* html braucht die App-Farbe, sonst weißer Streifen im iOS-Standalone */
+html{background:var(--bg);}
+body{
+  margin:0; position:fixed; inset:0; overflow:hidden; overscroll-behavior:none;
+  background:var(--bg); color:var(--text);
+  font:16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+a{color:inherit}
+#app{position:absolute;inset:0;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+
+/* Kopf */
+.top{padding:14px 0 10px;position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 82%,transparent)}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-size:30px;line-height:1.1;margin:0;letter-spacing:-.02em;font-weight:800}
+h1 span{color:var(--accent)}
+.stamp{font-size:12px;color:var(--faint);text-align:right}
+.search{margin-top:12px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--text);font:inherit;padding:11px 0;font-size:16px}
+.search svg{flex:none;opacity:.6}
+
+/* Chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 2px;margin:0 -16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 13px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:14px;white-space:nowrap;color:var(--text)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chip.filter{display:flex;align-items:center;gap:6px}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.count{font-size:13px;color:var(--muted);margin:12px 0 4px}
+
+/* Filmliste */
+.film{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);text-decoration:none;width:100%;text-align:left}
+.poster{flex:none;width:96px;aspect-ratio:2/3;border-radius:10px;background:var(--surface2) center/cover no-repeat;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.film .info{flex:1;min-width:0}
+.film h2{font-size:17px;line-height:1.25;margin:2px 0 4px;font-weight:700}
+.meta{font-size:13px;color:var(--muted)}
+.desc{font-size:14px;color:#c4c7d0;margin:6px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.next{font-size:13px;margin-top:8px;color:var(--text)}
+.next b{color:var(--accent);font-weight:600}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.b{font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 6px;border-radius:5px;background:#2b2f3a;color:#d9dbe2;line-height:1}
+.b.OV{background:#1e4fa8;color:#fff}.b.OmU{background:#0f7d72;color:#fff}.b.\33 D{background:#7a3cc4;color:#fff}
+.b.IMAX{background:#0a63c9;color:#fff}.b.Dolby{background:#fff;color:#000}.b.D-Box{background:#b3261e;color:#fff}
+.b.Atmos{background:#2b2f3a;color:#e9e9ee}.b.Laser{background:#7a5a10;color:#ffe2a3}
+.cdots{display:inline-flex;gap:4px;margin-left:6px;vertical-align:1px}
+.cdots i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.empty{padding:50px 0;text-align:center;color:var(--muted)}
+.notice{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#2a2112;color:#f2d19b;font-size:13px}
+
+/* Detail */
+.hero{position:relative;margin:0 -16px;padding:0 16px 18px;overflow:hidden}
+.hero .bgimg{position:absolute;inset:-40px;background:center/cover no-repeat;filter:blur(30px) brightness(.4);transform:scale(1.1)}
+.hero .row{position:relative;display:flex;gap:16px;padding-top:6px}
+.hero .poster{width:120px}
+.hero h2{font-size:24px;line-height:1.15;margin:4px 0 8px;letter-spacing:-.01em}
+.bar{display:flex;align-items:center;justify-content:space-between;padding:10px 0;position:relative}
+.iconbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.1);font-size:15px;backdrop-filter:blur(10px)}
+.fulldesc{font-size:15px;color:#d3d5dc;margin:14px 0 4px}
+.more{color:var(--accent);font-size:14px;margin-top:4px}
+.day{margin-top:22px}
+.day h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 8px}
+.venue{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+.venue .vh{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.venue .vh .dot{width:10px;height:10px;border-radius:50%}
+.hall{display:flex;gap:12px;align-items:flex-start;margin-top:10px}
+.hall .hn{flex:none;width:96px;font-size:13px;color:var(--muted);padding-top:7px}
+.times{display:flex;flex-wrap:wrap;gap:8px}
+.t{display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);text-decoration:none;min-width:54px}
+.t .tt{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.t .badges{margin:0;gap:3px}.t .b{font-size:9px;padding:2px 4px}
+.t.past{opacity:.35}
+
+/* Kinos */
+.cinema{display:flex;align-items:center;gap:12px;width:100%;padding:16px;margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-align:left}
+.cinema .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.cinema .cn{flex:1;font-weight:700}
+.cinema .cs{font-size:13px;color:var(--muted);font-weight:400}
+.halls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sched{margin-top:8px}
+.slot{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none;width:100%;text-align:left}
+.slot .tm{flex:none;width:52px;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.slot .end{display:block;font-size:11px;color:var(--faint);font-weight:400}
+.slot .poster{width:42px;border-radius:6px;box-shadow:none}
+.slot .st{flex:1;min-width:0}
+.slot .st div:first-child{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Tabs unten */
+.tabs{flex:none;display:flex;background:#121318;border-top:1px solid var(--line)}
+.tabs button{flex:1;padding:9px 0 11px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--faint)}
+.tabs button.on{color:var(--accent)}
+
+/* Filter-Blatt */
+.sheet{position:absolute;inset:0;z-index:20;display:none}
+.sheet.open{display:block}
+.sheet .shade{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet .panel{position:absolute;left:0;right:0;bottom:0;max-height:86%;overflow-y:auto;overscroll-behavior:contain;background:#15171d;border-radius:20px 20px 0 0;padding:8px 16px 24px;box-shadow:0 -10px 40px rgba(0,0,0,.5)}
+.panel .grab{width:40px;height:5px;border-radius:3px;background:#3a3e4a;margin:4px auto 10px}
+.panel h4{margin:18px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.panel .chips{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
+.panel .sub{margin:6px 0 4px 18px}
+.panel .sub .chip{font-size:13px;padding:5px 11px}
+.panel .actions{display:flex;gap:10px;margin-top:24px}
+.btn{flex:1;padding:13px;border-radius:12px;background:var(--surface2);font-weight:600;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+/* Meine Filme */
+.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.act{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:rgba(255,255,255,.12);font-size:14px;font-weight:600}
+.act.on{background:var(--accent);color:var(--accent-ink)}
+.mine{display:inline-flex;gap:6px;margin-left:6px;vertical-align:2px}
+.mk{font-size:11px;font-weight:700;padding:3px 7px;border-radius:5px;background:rgba(255,181,71,.16);color:var(--accent);line-height:1}
+.stars{color:var(--accent);letter-spacing:1px;white-space:nowrap}
+.stars .off{color:#3a3e4a}
+.starpick{display:flex;gap:6px;justify-content:center;margin:6px 0 2px}
+.starpick button{font-size:38px;line-height:1;color:#3a3e4a;padding:2px}
+.starpick button.on{color:var(--accent)}
+.field{display:block;margin-top:14px;font-size:13px;color:var(--muted)}
+.field input,.field select,.field textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--text);font:inherit;font-size:16px;padding:10px 12px;-webkit-appearance:none;appearance:none}
+.field textarea{min-height:70px;resize:vertical}
+.stats{display:flex;gap:10px;margin:6px 0 4px}
+.stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:center}
+.stat b{display:block;font-size:22px;color:var(--accent)}
+.stat span{font-size:12px;color:var(--muted)}
+.month{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:22px 0 2px}
+.entry .note{font-size:13px;color:#c4c7d0;margin-top:3px;font-style:italic}
+.linkbtn{color:var(--accent);font-size:14px;padding:6px 0}
+.seat{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.35);border-radius:var(--r);padding:12px 14px;margin-top:12px}
+.seat .ic{font-size:22px;flex:none}
+.seat .sv{flex:1;min-width:0}
+.seat .sv b{color:var(--accent)}
+.seat.add{background:none;border-style:dashed;border-color:var(--line);color:var(--muted)}
+.seathint{display:block;font-size:11px;color:var(--accent);margin-top:3px;line-height:1.25}
+.toast{position:absolute;left:50%;bottom:80px;white-space:nowrap;transform:translateX(-50%);background:#fff;color:#000;padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="scroll" id="scroll"><div class="wrap" id="view"></div></div>
+  <nav class="tabs">
+    <button id="tab-films" onclick="go('#/')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>Filme</button>
+    <button id="tab-cinemas" onclick="go('#/kinos')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Kinos &amp; Säle</button>
+    <button id="tab-mine" onclick="go('#/meine')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Meine Filme</button>
+  </nav>
+  <div class="sheet" id="sheet"><div class="shade" onclick="closeSheet()"></div><div class="panel" id="panel"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+const TAGS = ["OV","OmU","3D","IMAX","Dolby Cinema","D-Box","Atmos","Laser"];
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WDL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+let D = null;            // data.json
+let FILM = {}, CIN = {};
+const F = load("filters", {day:"all", cinemas:[], halls:[], tags:[], q:""});
+
+function load(k, d){ try{ return Object.assign(d, JSON.parse(localStorage.getItem(k)||"{}")); }catch(e){ return d; } }
+function save(){ try{ localStorage.setItem("filters", JSON.stringify({...F, q:""})); }catch(e){} }
+// Merkliste & Tagebuch – liegen nur auf diesem Gerät. Filme verschwinden aus data.json,
+// darum wird Titel/Poster mitgespeichert.
+const ME = load("kino.me", {watch:{}, diary:[], seats:{}});
+function saveMe(){ try{ localStorage.setItem("kino.me", JSON.stringify(ME)); }catch(e){ toast("Speichern nicht möglich"); } }
+const snap = f => ({id:f.id, title:f.title, poster:f.poster||null, minutes:f.minutes||null, genre:f.genre||null});
+const isWatch = id => !!ME.watch[id];
+const seenOf = id => ME.diary.filter(e => e.film===id).sort((a,b)=>b.date.localeCompare(a.date));
+function toggleWatch(id){
+  if(ME.watch[id]) delete ME.watch[id];
+  else ME.watch[id] = {...snap(FILM[id]), added: nowLocal().slice(0,10)};
+  saveMe(); toast(ME.watch[id] ? "Auf die Merkliste gesetzt" : "Von der Merkliste entfernt"); render();
+}
+const starStr = n => `<span class="stars">${"★".repeat(n||0)}<span class="off">${"★".repeat(5-(n||0))}</span></span>`;
+const fmtDate = d => { const x=new Date(d+"T12:00"); return `${WD[x.getDay()]} ${pad(x.getDate())}.${pad(x.getMonth()+1)}.${x.getFullYear()}`; };
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+function nowLocal(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function addMin(iso, m){ const d=new Date(iso); d.setMinutes(d.getMinutes()+m); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function dayLabel(day, long){
+  const today = nowLocal().slice(0,10);
+  const t = new Date(today+"T12:00"); t.setDate(t.getDate()+1);
+  const tomorrow = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+  const d = new Date(day+"T12:00");
+  const dm = `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`;
+  if(day===today) return long ? `Heute · ${WDL[d.getDay()]} ${dm}` : "Heute";
+  if(day===tomorrow) return long ? `Morgen · ${WDL[d.getDay()]} ${dm}` : "Morgen";
+  return long ? `${WDL[d.getDay()]} ${dm}` : `${WD[d.getDay()]} ${dm}`;
+}
+const badge = t => `<span class="b ${esc(t.split(" ")[0])}">${esc(t==="Dolby Cinema"?"DOLBY CINEMA":t)}</span>`;
+const hallKey = s => `${s.cinema}|${s.screen||"–"}`;
+
+/* ---------- Daten ---------- */
+async function init(){
+  try{
+    const r = await fetch("data.json?t="+Date.now(), {cache:"no-store"});
+    D = await r.json();
+  }catch(e){
+    $("#view").innerHTML = `<div class="empty">Programm konnte nicht geladen werden.<br>Bitte später nochmal.</div>`; return;
+  }
+  D.films.forEach(f => FILM[f.id]=f);
+  D.cinemas.forEach(c => CIN[c.id]=c);
+  // Vorbei? Vorstellungen, die schon >20 Min laufen, ausblenden
+  render();
+}
+function upcoming(){
+  const d=new Date(); d.setMinutes(d.getMinutes()-20);
+  const cut = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return D.shows.filter(s => s.start >= cut);
+}
+function days(shows){ return [...new Set(shows.map(s=>s.start.slice(0,10)))].sort(); }
+function matches(s, opt={}){
+  if(!opt.ignoreDay && F.day!=="all" && s.start.slice(0,10)!==F.day) return false;
+  if(F.cinemas.length && !F.cinemas.includes(s.cinema)) return false;
+  if(F.halls.length && !F.halls.includes(hallKey(s))) return false;
+  if(F.tags.length && !F.tags.every(t => (s.tags||[]).includes(t))) return false;
+  return true;
+}
+
+/* ---------- Router ---------- */
+function go(h){ if(location.hash===h) render(); else location.hash=h; }
+window.addEventListener("hashchange", () => { render(); $("#scroll").scrollTop = 0; });
+function render(){
+  if(!D) return;
+  const h = decodeURIComponent(location.hash.slice(1)) || "/";
+  const p = h.split("/").filter(Boolean);
+  $("#tab-films").classList.toggle("on", p[0]!=="kinos");
+  $("#tab-cinemas").classList.toggle("on", p[0]==="kinos");
+  $("#tab-mine").classList.toggle("on", p[0]==="meine");
+  $("#tab-films").classList.toggle("on", !["kinos","meine"].includes(p[0]));
+  if(p[0]==="meine") return renderMine(p[1]||"merkliste");
+  if(p[0]==="film" && FILM[p[1]]) return renderFilm(FILM[p[1]]);
+  if(p[0]==="kinos" && p[1] && CIN[p[1]]) return renderHall(CIN[p[1]], p[2]);
+  if(p[0]==="kinos") return renderCinemas();
+  renderList();
+}
+
+/* ---------- Filmliste ---------- */
+function renderList(){
+  const all = upcoming();
+  const shows = all.filter(s => matches(s));
+  const by = {};
+  shows.forEach(s => (by[s.film] ||= []).push(s));
+  const q = F.q.trim().toLowerCase();
+  let films = Object.keys(by).map(id => FILM[id]).filter(f => !q || f.title.toLowerCase().includes(q))
+      .filter(f => !F.watchOnly || isWatch(f.id));
+  films.sort((a,b) => by[b.id].length - by[a.id].length || a.title.localeCompare(b.title,"de"));
+
+  const ds = days(all);
+  const active = F.cinemas.length + F.halls.length + F.tags.length;
+  const down = D.cinemas.filter(c => !c.status || !c.status.ok);
+  const gen = new Date(D.generated);
+
+  $("#view").innerHTML = `
+  <div class="top">
+    <div class="brand"><h1>Kino<span>HH</span></h1>
+      <div class="stamp">Stand ${pad(gen.getDate())}.${pad(gen.getMonth()+1)}. ${pad(gen.getHours())}:${pad(gen.getMinutes())}</div></div>
+    <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Film suchen" value="${esc(F.q)}" autocomplete="off"></label>
+    <div class="chips">
+      <button class="chip ${F.day==="all"?"on":""}" data-day="all">Alle Tage</button>
+      ${ds.slice(0,14).map(d => `<button class="chip ${F.day===d?"on":""}" data-day="${d}">${dayLabel(d)}</button>`).join("")}
+    </div>
+    <div class="chips">
+      <button class="chip filter ${active?"on":""}" onclick="openFilter()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        Filter${active?` · ${active}`:""}</button>
+      ${F.cinemas.map(c => `<button class="chip filter" data-rm="c:${c}"><span class="dot" style="background:${CIN[c].color}"></span>${esc(CIN[c].short)} ✕</button>`).join("")}
+      ${F.halls.map(k => { const [c,h]=k.split("|"); return `<button class="chip filter" data-rm="h:${esc(k)}"><span class="dot" style="background:${CIN[c].color}"></span>${esc(CIN[c].short)} · ${esc(h)} ✕</button>`; }).join("")}
+      ${F.tags.map(t => `<button class="chip filter" data-rm="t:${esc(t)}">${esc(t)} ✕</button>`).join("")}
+      ${Object.keys(ME.watch).length ? `<button class="chip filter ${F.watchOnly?"on":""}" id="watchOnly">☆ Merkliste</button>` : ""}
+    </div>
+  </div>
+  ${down.length ? `<div class="notice">Gerade nicht abrufbar: ${down.map(c=>esc(c.name)).join(", ")}.</div>` : ""}
+  <div class="count">${films.length} ${films.length===1?"Film":"Filme"} · ${shows.length} Vorstellungen</div>
+  ${films.map(f => filmCard(f, by[f.id])).join("") || `<div class="empty">Nichts gefunden.<br>Filter lockern?</div>`}
+  <div style="height:24px"></div>`;
+
+  $("#q").addEventListener("input", e => { F.q = e.target.value; const pos=e.target.selectionStart; renderList(); const q=$("#q"); q.focus(); q.setSelectionRange(pos,pos); });
+  const wo = $("#watchOnly"); if(wo) wo.onclick = () => { F.watchOnly = !F.watchOnly; save(); renderList(); };
+  document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { F.day=b.dataset.day; save(); renderList(); });
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+    const [k,...v] = b.dataset.rm.split(":"); const val=v.join(":");
+    if(k==="c") F.cinemas=F.cinemas.filter(x=>x!==val);
+    if(k==="h") F.halls=F.halls.filter(x=>x!==val);
+    if(k==="t") F.tags=F.tags.filter(x=>x!==val);
+    save(); renderList();
+  });
+}
+function mineMarks(id){
+  const seen = seenOf(id)[0];
+  const m = [isWatch(id) && `<span class="mk">☆ Gemerkt</span>`, seen && `<span class="mk">✓ ${seen.stars ? seen.stars+"★" : "Gesehen"}</span>`].filter(Boolean);
+  return m.length ? `<span class="mine">${m.join("")}</span>` : "";
+}
+function filmCard(f, shows){
+  const tags = TAGS.filter(t => shows.some(s => (s.tags||[]).includes(t)));
+  const cins = [...new Set(shows.map(s=>s.cinema))];
+  const n = shows[0];
+  const meta = [f.genre, f.minutes && `${f.minutes} Min`, f.fsk].filter(Boolean).join(" · ");
+  return `<a class="film" href="#/film/${encodeURIComponent(f.id)}">
+    <div class="poster" style="background-image:url('${esc(f.poster||"")}')"></div>
+    <div class="info">
+      <h2>${esc(f.title)}${mineMarks(f.id)}</h2>
+      <div class="meta">${esc(meta)}</div>
+      ${f.desc ? `<p class="desc">${esc(f.desc)}</p>` : ""}
+      <div class="next">Nächste: <b>${dayLabel(n.start.slice(0,10))} ${n.start.slice(11)}</b> · ${esc(CIN[n.cinema].short)}
+        <span class="cdots">${cins.map(c=>`<i style="background:${CIN[c].color}" title="${esc(CIN[c].name)}"></i>`).join("")}</span></div>
+      ${tags.length ? `<div class="badges">${tags.map(badge).join("")}</div>` : ""}
+    </div></a>`;
+}
+
+/* ---------- Filter-Blatt ---------- */
+function openFilter(){
+  const all = upcoming();
+  const hallsOf = c => [...new Set(all.filter(s=>s.cinema===c).map(s=>s.screen||"–"))]
+      .sort((a,b)=>a.localeCompare(b,"de",{numeric:true}));
+  const tagsAvail = TAGS.filter(t => all.some(s => (s.tags||[]).includes(t)));
+  $("#panel").innerHTML = `<div class="grab"></div>
+    <h4>Kinos &amp; Säle</h4>
+    ${D.cinemas.filter(c => all.some(s=>s.cinema===c.id)).map(c => `
+      <div class="chips"><button class="chip filter ${F.cinemas.includes(c.id)?"on":""}" data-fc="${c.id}"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</button></div>
+      <div class="chips sub">${hallsOf(c.id).map(h => { const k=`${c.id}|${h}`; return `<button class="chip ${F.halls.includes(k)?"on":""}" data-fh="${esc(k)}">${esc(h)}</button>`; }).join("")}</div>`).join("")}
+    <h4>Fassung &amp; Technik</h4>
+    <div class="chips">${tagsAvail.map(t => `<button class="chip ${F.tags.includes(t)?"on":""}" data-ft="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <div class="actions"><button class="btn" onclick="resetFilter()">Zurücksetzen</button><button class="btn primary" onclick="closeSheet()">Fertig</button></div>`;
+  const tog = (arr, v) => arr.includes(v) ? arr.filter(x=>x!==v) : [...arr, v];
+  $("#panel").querySelectorAll("[data-fc]").forEach(b => b.onclick = () => { F.cinemas = tog(F.cinemas, b.dataset.fc); save(); openFilter(); });
+  $("#panel").querySelectorAll("[data-fh]").forEach(b => b.onclick = () => { F.halls = tog(F.halls, b.dataset.fh); save(); openFilter(); });
+  $("#panel").querySelectorAll("[data-ft]").forEach(b => b.onclick = () => { F.tags = tog(F.tags, b.dataset.ft); save(); openFilter(); });
+  $("#sheet").classList.add("open");
+}
+function resetFilter(){ F.cinemas=[]; F.halls=[]; F.tags=[]; save(); openFilter(); }
+function closeSheet(){ $("#sheet").classList.remove("open"); render(); }
+
+/* ---------- Filmdetail ---------- */
+function renderFilm(f){
+  const all = upcoming().filter(s => s.film===f.id);
+  const filtered = all.filter(s => matches(s, {ignoreDay:true}));
+  const shows = filtered.length ? filtered : all;
+  const meta = [f.genre, f.minutes && `${f.minutes} Min`, f.fsk].filter(Boolean).join(" · ");
+  const tags = TAGS.filter(t => shows.some(s => (s.tags||[]).includes(t)));
+  const now = nowLocal();
+  $("#view").innerHTML = `
+  <div class="hero">
+    <div class="bgimg" style="background-image:url('${esc(f.poster||"")}')"></div>
+    <div class="bar">
+      <button class="iconbtn" onclick="history.length>1?history.back():go('#/')">‹ Zurück</button>
+      <button class="iconbtn" onclick="shareFilm('${esc(f.id)}')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Teilen</button>
+    </div>
+    <div class="row">
+      <div class="poster" style="background-image:url('${esc(f.poster||"")}')"></div>
+      <div><h2>${esc(f.title)}</h2><div class="meta">${esc(meta)}</div>
+        ${tags.length ? `<div class="badges">${tags.map(badge).join("")}</div>` : ""}
+        <div class="acts">
+          <button class="act ${isWatch(f.id)?"on":""}" onclick="toggleWatch('${esc(f.id)}')">${isWatch(f.id)?"★ Gemerkt":"☆ Merken"}</button>
+          <button class="act" onclick="openSeen('${esc(f.id)}')">✓ Gesehen</button>
+        </div></div>
+    </div>
+  </div>
+  ${seenOf(f.id).map(e => `<button class="venue entry" style="width:100%;text-align:left;margin-top:14px" onclick="openSeen('${esc(f.id)}','${e.uid}')">
+      <div class="vh">✓ Gesehen am ${fmtDate(e.date)} ${starStr(e.stars)}</div>
+      <div class="meta">${esc([e.cinema, e.hall].filter(Boolean).join(" · "))}</div>
+      ${e.note ? `<div class="note">„${esc(e.note)}“</div>` : ""}</button>`).join("")}
+  ${f.desc ? `<p class="fulldesc">${esc(f.desc)}</p>` : ""}
+  ${filtered.length && filtered.length < all.length ? `<div class="notice">Gefiltert: ${filtered.length} von ${all.length} Vorstellungen. <a href="#" onclick="F.cinemas=[];F.halls=[];F.tags=[];save();render();return false">Alle zeigen</a></div>` : ""}
+  ${groupByDay(shows).map(([day, ss]) => `
+    <div class="day"><h3>${dayLabel(day, true)}</h3>
+      ${groupBy(ss, s=>s.cinema).map(([c, cs]) => `
+        <div class="venue"><div class="vh"><span class="dot" style="background:${CIN[c].color}"></span>${esc(CIN[c].name)}</div>
+          ${groupBy(cs, s=>s.screen||"–").map(([h, hs]) => `
+            <div class="hall"><div class="hn">${esc(h)}${seatHint(c, h)}</div><div class="times">
+              ${hs.map(s => `<a class="t ${s.start<now?"past":""}" href="${esc(s.url||"#")}" target="_blank" rel="noopener">
+                <span class="tt">${s.start.slice(11)}</span>
+                ${(s.tags||[]).length ? `<span class="badges">${s.tags.filter(t=>t!=="Atmos"&&t!=="Laser").map(badge).join("")}</span>`:""}</a>`).join("")}
+            </div></div>`).join("")}
+        </div>`).join("")}
+    </div>`).join("") || `<div class="empty">Keine weiteren Vorstellungen.</div>`}
+  <div style="height:28px"></div>`;
+}
+function groupBy(arr, fn){ const m=new Map(); arr.forEach(x => { const k=fn(x); m.has(k)||m.set(k,[]); m.get(k).push(x); }); return [...m]; }
+function groupByDay(shows){ return groupBy([...shows].sort((a,b)=>a.start.localeCompare(b.start)), s=>s.start.slice(0,10)); }
+
+async function shareFilm(id){
+  const f = FILM[id];
+  const all = upcoming().filter(s => s.film===id);
+  const filtered = all.filter(s => matches(s, {ignoreDay:true}));
+  const shows = (filtered.length ? filtered : all).slice(0, 60);
+  let text = `🎬 ${f.title}\n`;
+  for(const [day, ss] of groupByDay(shows)){
+    text += `\n${dayLabel(day, true)}\n`;
+    for(const [c, cs] of groupBy(ss, s=>s.cinema))
+      for(const [h, hs] of groupBy(cs, s=>s.screen||""))
+        text += `  ${CIN[c].short}${h?` · ${h}`:""}: ${hs.map(s => s.start.slice(11) + ((s.tags||[]).filter(t=>["OV","OmU","3D","IMAX"].includes(t)).length ? ` (${s.tags.filter(t=>["OV","OmU","3D","IMAX"].includes(t)).join(", ")})` : "")).join(", ")}\n`;
+  }
+  const url = location.href.split("#")[0] + "#/film/" + encodeURIComponent(id);
+  try{
+    if(navigator.share){ await navigator.share({title: f.title, text, url}); return; }
+    await navigator.clipboard.writeText(text + "\n" + url); toast("Kopiert");
+  }catch(e){ if(e.name!=="AbortError") toast("Teilen nicht möglich"); }
+}
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 1600); }
+
+/* ---------- Gesehen eintragen ---------- */
+function openSeen(filmId, uid){
+  const f = FILM[filmId] || ME.watch[filmId] || (ME.diary.find(e=>e.film===filmId)||{});
+  const old = uid ? ME.diary.find(e => e.uid===uid) : null;
+  const e = old ? {...old} : {date: nowLocal().slice(0,10), cinema:"", hall:"", stars:0, note:""};
+  const names = D.cinemas.map(c => c.name);
+  $("#panel").innerHTML = `<div class="grab"></div>
+    <h4 style="margin-top:6px">${old ? "Eintrag bearbeiten" : "Gesehen"}</h4>
+    <div style="font-size:20px;font-weight:700">${esc(f.title||old?.title||"")}</div>
+    <div class="starpick" id="sp">${[1,2,3,4,5].map(n => `<button data-s="${n}" class="${n<=e.stars?"on":""}" aria-label="${n} Sterne">★</button>`).join("")}</div>
+    <div class="meta" style="text-align:center" id="splabel">${e.stars ? ["","Naja","Geht so","Gut","Sehr gut","Großartig"][e.stars] : "Wie war er?"}</div>
+    <label class="field">Wann<input type="date" id="sd" value="${esc(e.date)}" max="${nowLocal().slice(0,10)}"></label>
+    <label class="field">Wo<select id="sc"><option value="">–</option>
+      ${[...new Set([...names, e.cinema].filter(Boolean))].map(n => `<option ${n===e.cinema?"selected":""}>${esc(n)}</option>`).join("")}
+      <option value="Anderes Kino" ${e.cinema==="Anderes Kino"?"selected":""}>Anderes Kino</option></select></label>
+    <label class="field">Saal (optional)<input id="sh" value="${esc(e.hall||"")}" placeholder="z. B. Club"></label>
+    <label class="field">Notiz (optional)<textarea id="sn" placeholder="Mit wem? Was war toll?">${esc(e.note||"")}</textarea></label>
+    <div class="actions">${old ? `<button class="btn" id="sdel">Löschen</button>` : `<button class="btn" onclick="closeSheet()">Abbrechen</button>`}
+      <button class="btn primary" id="ssave">Speichern</button></div>`;
+  $("#sp").querySelectorAll("button").forEach(b => b.onclick = () => {
+    e.stars = +b.dataset.s === e.stars ? 0 : +b.dataset.s;
+    $("#sp").querySelectorAll("button").forEach(x => x.classList.toggle("on", +x.dataset.s <= e.stars));
+    $("#splabel").textContent = e.stars ? ["","Naja","Geht so","Gut","Sehr gut","Großartig"][e.stars] : "Wie war er?";
+  });
+  $("#ssave").onclick = () => {
+    const entry = {...e, uid: old?.uid || Date.now().toString(36), film: filmId,
+      title: f.title||old.title, poster: f.poster||old?.poster||null,
+      date: $("#sd").value || nowLocal().slice(0,10), cinema: $("#sc").value, hall: $("#sh").value.trim(), note: $("#sn").value.trim()};
+    ME.diary = ME.diary.filter(x => x.uid !== entry.uid).concat(entry);
+    if(!old) delete ME.watch[filmId];   // gesehen → runter von der Merkliste
+    saveMe(); toast(old ? "Gespeichert" : "Ins Tagebuch eingetragen"); closeSheet();
+  };
+  if(old) $("#sdel").onclick = () => { if(confirm("Eintrag löschen?")){ ME.diary = ME.diary.filter(x => x.uid!==old.uid); saveMe(); closeSheet(); } };
+  $("#sheet").classList.add("open");
+}
+
+/* ---------- Meine Filme ---------- */
+function renderMine(sub){
+  const all = upcoming();
+  const nextOf = id => all.find(s => s.film===id);
+  const watch = Object.values(ME.watch).sort((a,b) => (nextOf(a.id)?0:1)-(nextOf(b.id)?0:1) || (b.added||"").localeCompare(a.added||""));
+  const diary = [...ME.diary].sort((a,b) => b.date.localeCompare(a.date) || b.uid.localeCompare(a.uid));
+  const year = nowLocal().slice(0,4);
+  const thisYear = diary.filter(e => e.date.startsWith(year));
+  const rated = diary.filter(e => e.stars);
+  const avg = rated.length ? (rated.reduce((a,e)=>a+e.stars,0)/rated.length).toFixed(1).replace(".",",") : "–";
+  const poster = p => `<div class="poster" style="background-image:url('${esc(p||"")}')"></div>`;
+  $("#view").innerHTML = `
+  <div class="top"><div class="brand"><h1>Meine <span>Filme</span></h1></div>
+    <div class="chips">
+      <button class="chip ${sub==="merkliste"?"on":""}" onclick="go('#/meine/merkliste')">☆ Merkliste · ${watch.length}</button>
+      <button class="chip ${sub==="tagebuch"?"on":""}" onclick="go('#/meine/tagebuch')">✓ Tagebuch · ${diary.length}</button>
+      <button class="chip ${sub==="plaetze"?"on":""}" onclick="go('#/meine/plaetze')">💺 Plätze · ${Object.keys(ME.seats).length}</button>
+    </div></div>
+  ${sub==="plaetze" ? renderSeats() : sub==="merkliste" ? (watch.map(w => { const n = nextOf(w.id); const href = FILM[w.id] ? `#/film/${encodeURIComponent(w.id)}` : null; return `
+    <div class="slot" style="align-items:flex-start">
+      <a href="${href||"javascript:void 0"}" style="display:contents">${poster(w.poster)}</a>
+      <div class="st"><a href="${href||"javascript:void 0"}" style="text-decoration:none"><div>${esc(w.title)}</div>
+        <div class="meta">${n ? `Nächste: <b style="color:var(--accent)">${dayLabel(n.start.slice(0,10))} ${n.start.slice(11)}</b> · ${esc(CIN[n.cinema].short)}` : "läuft gerade in keinem deiner Kinos"}</div></a>
+        <div style="display:flex;gap:16px;margin-top:4px"><button class="linkbtn" onclick="openSeen('${esc(w.id)}')">✓ Gesehen</button>
+          <button class="linkbtn" style="color:var(--faint)" onclick="delete ME.watch['${esc(w.id)}'];saveMe();render()">Entfernen</button></div>
+      </div></div>`; }).join("") || `<div class="empty">Noch nichts gemerkt.<br>Tipp bei einem Film auf „☆ Merken“.</div>`)
+  : `
+    <div class="stats">
+      <div class="stat"><b>${thisYear.length}</b><span>Filme ${year}</span></div>
+      <div class="stat"><b>${diary.length}</b><span>insgesamt</span></div>
+      <div class="stat"><b>${avg}</b><span>Ø Sterne</span></div>
+    </div>
+    ${groupBy(diary, e => e.date.slice(0,7)).map(([m, es]) => `
+      <div class="month">${new Date(m+"-15T12:00").toLocaleDateString("de-DE",{month:"long",year:"numeric"})}</div>
+      ${es.map(e => `<button class="slot entry" onclick="openSeen('${esc(e.film)}','${e.uid}')">
+        <div class="tm" style="font-size:15px">${pad(new Date(e.date+"T12:00").getDate())}.<span class="end">${WD[new Date(e.date+"T12:00").getDay()]}</span></div>
+        ${poster(e.poster)}
+        <div class="st"><div>${esc(e.title)}</div>
+          <div class="meta">${starStr(e.stars)} ${esc([e.cinema, e.hall].filter(Boolean).join(" · "))}</div>
+          ${e.note ? `<div class="note">„${esc(e.note)}“</div>` : ""}</div></button>`).join("")}`).join("")
+      || `<div class="empty">Dein Kinotagebuch ist noch leer.<br>Bei einem Film auf „✓ Gesehen“ tippen.</div>`}
+    <div style="display:flex;gap:16px;justify-content:center;margin-top:26px">
+      <button class="linkbtn" onclick="backupMe()">Sicherung teilen</button>
+      <button class="linkbtn" onclick="$('#restore').click()">Sicherung laden</button>
+      <input type="file" id="restore" accept="application/json,.json,text/plain" hidden onchange="restoreMe(this.files[0])">
+    </div>`}
+  <div style="height:28px"></div>`;
+}
+async function backupMe(){
+  const json = JSON.stringify(ME);
+  const file = new File([json], `kino-tagebuch-${nowLocal().slice(0,10)}.json`, {type:"application/json"});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})) return await navigator.share({files:[file], title:"Kino-Tagebuch"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+  }catch(e){ if(e.name!=="AbortError") toast("Sicherung nicht möglich"); }
+}
+async function restoreMe(file){
+  if(!file) return;
+  try{
+    const x = JSON.parse(await file.text());
+    if(!x || !Array.isArray(x.diary) || typeof x.watch!=="object") throw 0;
+    const uids = new Set(ME.diary.map(e=>e.uid));
+    ME.diary = ME.diary.concat(x.diary.filter(e => !uids.has(e.uid)));
+    ME.watch = {...x.watch, ...ME.watch};
+    ME.seats = {...(x.seats||{}), ...ME.seats};
+    saveMe(); toast("Sicherung geladen"); render();
+  }catch(e){ toast("Datei passt nicht"); }
+}
+
+/* ---------- Lieblingsplätze ---------- */
+// Schlüssel ist der Kinoname (nicht die id), damit auch frei eingetragene Kinos gehen
+const seatKey = (cinemaName, hall) => `${cinemaName}|${hall}`;
+const seatText = x => [x.row && `Reihe ${x.row}`, x.seats && `Platz ${x.seats}`].filter(Boolean).join(", ");
+function seatHint(cid, hall){
+  const x = ME.seats[seatKey(CIN[cid].name, hall)];
+  return x && seatText(x) ? `<span class="seathint">💺 ${esc(seatText(x))}</span>` : "";
+}
+function seatCard(cinemaName, hall){
+  const k = seatKey(cinemaName, hall), x = ME.seats[k];
+  return x ? `<button class="seat" data-seat="${esc(k)}"><span class="ic">💺</span><span class="sv">
+      <div><b>${esc(seatText(x) || "Meine Plätze")}</b></div>
+      ${x.note ? `<div class="meta">${esc(x.note)}</div>` : ""}</span><span style="color:var(--faint)">✎</span></button>`
+    : `<button class="seat add" data-seat="${esc(k)}"><span class="ic">💺</span><span class="sv">Lieblingsplätze für ${esc(hall)} merken</span><span>＋</span></button>`;
+}
+function renderSeats(){
+  const list = Object.entries(ME.seats).sort((a,b) => a[0].localeCompare(b[0],"de",{numeric:true}));
+  return `${list.map(([k]) => { const [c,h] = k.split("|"); return `<div class="month">${esc(c)}</div>${seatCard(c,h).replace("<b>", `<b>${esc(h)} · `)}`; }).join("")
+      || `<div class="empty">Noch keine Plätze gemerkt.<br>Im Bereich „Kinos &amp; Säle“ einen Saal öffnen – oder hier anlegen.</div>`}
+    <button class="seat add" data-seat="" style="margin-top:22px"><span class="ic">＋</span><span class="sv">Saal hinzufügen</span></button>`;
+}
+function openSeat(k){
+  const [c0, h0] = k ? k.split("|") : ["", ""];
+  const x = ME.seats[k] || {row:"", seats:"", note:""};
+  const names = [...new Set([...D.cinemas.map(c => c.name), c0].filter(Boolean))];
+  $("#panel").innerHTML = `<div class="grab"></div>
+    <h4 style="margin-top:6px">Lieblingsplätze</h4>
+    ${k ? `<div style="font-size:20px;font-weight:700">${esc(h0)}</div><div class="meta">${esc(c0)}</div>` : `
+      <label class="field">Kino<select id="xc">${names.map(n => `<option>${esc(n)}</option>`).join("")}<option>Anderes Kino</option></select></label>
+      <label class="field">Saal<input id="xh" placeholder="z. B. Kino 4 oder Club"></label>`}
+    <div style="display:flex;gap:10px">
+      <label class="field" style="flex:1">Reihe<input id="xr" value="${esc(x.row)}" placeholder="z. B. 8" inputmode="text"></label>
+      <label class="field" style="flex:2">Plätze<input id="xs" value="${esc(x.seats)}" placeholder="z. B. 11–14"></label>
+    </div>
+    <label class="field">Notiz<textarea id="xn" placeholder="z. B. Mitte ist Platz 12 · Reihe 8 hat mehr Beinfreiheit">${esc(x.note)}</textarea></label>
+    <div class="actions">${ME.seats[k] ? `<button class="btn" id="xdel">Löschen</button>` : `<button class="btn" onclick="closeSheet()">Abbrechen</button>`}
+      <button class="btn primary" id="xsave">Speichern</button></div>`;
+  $("#xsave").onclick = () => {
+    const key = k || seatKey($("#xc").value, $("#xh").value.trim());
+    if(!key.split("|")[1]){ toast("Bitte einen Saal angeben"); return; }
+    ME.seats[key] = {row: $("#xr").value.trim(), seats: $("#xs").value.trim(), note: $("#xn").value.trim()};
+    saveMe(); toast("Plätze gemerkt"); closeSheet();
+  };
+  if(ME.seats[k]) $("#xdel").onclick = () => { delete ME.seats[k]; saveMe(); closeSheet(); };
+  $("#sheet").classList.add("open");
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-seat]"); if(b) openSeat(b.dataset.seat); });
+
+/* ---------- Kinos & Säle ---------- */
+function renderCinemas(){
+  const all = upcoming();
+  $("#view").innerHTML = `<div class="top"><div class="brand"><h1>Kinos <span>&amp;</span> Säle</h1></div></div>
+  <div class="count">Was läuft wann in welchem Saal?</div>
+  ${D.cinemas.map(c => {
+    const cs = all.filter(s=>s.cinema===c.id);
+    const halls = [...new Set(cs.map(s=>s.screen||"–"))].sort((a,b)=>a.localeCompare(b,"de",{numeric:true}));
+    const href = cs.length ? `#/kinos/${c.id}` : c.web;
+    return `<a class="cinema" href="${esc(href)}" ${cs.length ? "" : 'target="_blank" rel="noopener"'} style="text-decoration:none">
+      <span class="dot" style="background:${c.color}"></span>
+      <span class="cn">${esc(c.name)}<br><span class="cs">${cs.length ? `${halls.length} Säle · ${cs.length} Vorstellungen` : "keine Daten – Programm auf der Kino-Website öffnen"}</span></span>
+      <span style="color:var(--faint)">${cs.length ? "›" : "↗"}</span></a>`;
+  }).join("")}<div style="height:24px"></div>`;
+}
+function renderHall(c, hall){
+  const all = upcoming().filter(s => s.cinema===c.id);
+  const halls = [...new Set(all.map(s=>s.screen||"–"))].sort((a,b)=>a.localeCompare(b,"de",{numeric:true}));
+  const shows = hall ? all.filter(s => (s.screen||"–")===hall) : all;
+  $("#view").innerHTML = `
+  <div class="top">
+    <div class="bar" style="padding-top:0"><button class="iconbtn" onclick="go('#/kinos')">‹ Kinos</button></div>
+    <div class="brand"><h1 style="font-size:26px">${esc(c.name)}</h1></div>
+    <div class="chips">
+      <button class="chip ${!hall?"on":""}" data-h="">Alle Säle</button>
+      ${halls.map(h => `<button class="chip ${hall===h?"on":""}" data-h="${esc(h)}">${esc(h)}</button>`).join("")}
+    </div>
+  </div>
+  ${hall ? seatCard(c.name, hall) : ""}
+  ${groupByDay(shows).map(([day, ss]) => `
+    <div class="day"><h3>${dayLabel(day, true)}</h3><div class="sched">
+      ${ss.map(s => { const f=FILM[s.film]; return `<a class="slot" href="#/film/${encodeURIComponent(f.id)}">
+        <div class="tm">${s.start.slice(11)}${f.minutes?`<span class="end">bis ${addMin(s.start, f.minutes)}</span>`:""}</div>
+        <div class="poster" style="background-image:url('${esc(f.poster||"")}')"></div>
+        <div class="st"><div>${esc(f.title)}</div>
+          <div class="meta">${hall ? "" : esc(s.screen||"")}${(s.tags||[]).length ? ` <span class="badges" style="display:inline-flex;margin:0">${s.tags.map(badge).join("")}</span>`:""}</div></div>
+      </a>`; }).join("")}
+    </div></div>`).join("") || `<div class="empty">Keine Vorstellungen.</div>`}
+  <div style="height:28px"></div>`;
+  document.querySelectorAll("[data-h]").forEach(b => b.onclick = () => go(`#/kinos/${c.id}` + (b.dataset.h ? "/" + encodeURIComponent(b.dataset.h) : "")));
+}
+
+init();
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
