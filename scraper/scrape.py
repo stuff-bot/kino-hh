@@ -21,6 +21,9 @@ from zoneinfo import ZoneInfo
 
 BERLIN = ZoneInfo("Europe/Berlin")
 UA = "Mozilla/5.0 (compatible; KinoHH/1.0; private Programmübersicht)"
+# CinemaxX und UCI haben dem Abruf am 05.11.2026 per Mail zugestimmt, können ihren
+# Bot-Schutz aber nicht abschalten. Diese Kennung kommt durch und nennt trotzdem die App.
+UA_PERMITTED = "Mozilla/5.0 (KinoHH/1.0; private App, Abruf mit Erlaubnis)"
 OUT = Path(__file__).resolve().parent.parent / "site" / "data.json"
 DAYS_AHEAD = 10
 # python.org-Python auf dem Mac bringt keine CA-Zertifikate mit → System-Bundle nutzen
@@ -35,11 +38,11 @@ CINEMAS = [
 ]
 
 
-def fetch(url, retries=2):
+def fetch(url, retries=2, ua=UA):
     last = None
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "de-DE,de"})
+            req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept-Language": "de-DE,de"})
             with urllib.request.urlopen(req, timeout=30, context=SSL_CTX) as r:
                 return r.read().decode("utf-8", "replace")
         except Exception as e:  # noqa: BLE001
@@ -101,14 +104,16 @@ def tags_from_text(text):
 
 def cinemaxx(cid, api_id):
     base = "https://www.cinemaxx.de/api/microservice/showings"
-    dates = json.loads(fetch(f"{base}/showingDates?cinemaId={api_id}&minEmbargoLevel=2&forNextWeek=true"))["result"]
+    dates = json.loads(fetch(f"{base}/showingDates?cinemaId={api_id}&minEmbargoLevel=2&forNextWeek=true",
+                             ua=UA_PERMITTED))["result"]
     days = [d["showingDate"][:10] for d in dates if d.get("hasShowings")][:DAYS_AHEAD]
     shows, missing = [], []
     for day in days:
+        time.sleep(1)  # schonend: ein Tag pro Sekunde
         try:
             data = json.loads(fetch(
                 f"{base}/cinemas/{api_id}/films?showingDate={day}T00:00:00"
-                "&minEmbargoLevel=3&includesSession=true&includeSessionAttributes=true", retries=1))
+                "&minEmbargoLevel=3&includesSession=true&includeSessionAttributes=true", retries=1, ua=UA_PERMITTED))
         except Exception:  # noqa: BLE001 – einzelne Tage verweigert die Seite gelegentlich
             missing.append(day)
             continue
@@ -263,7 +268,7 @@ def astor():
 # --- UCI Wandsbek (Programmseite) ---------------------------------------------------------
 
 def uci():
-    page = fetch("https://www.uci-kinowelt.de/kinoprogramm/hh-wandsbek-smart-city/54")
+    page = fetch("https://www.uci-kinowelt.de/kinoprogramm/hh-wandsbek-smart-city/54", ua=UA_PERMITTED)
     shows = []
     parts = re.split(r'(?=<h2 class="film-container__description__text__eventtitle">)', page)
     for i, b in enumerate(parts[1:], 1):

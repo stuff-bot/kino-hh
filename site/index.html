@@ -269,11 +269,19 @@ function renderList(){
   const q = F.q.trim().toLowerCase();
   let films = Object.keys(by).map(id => FILM[id]).filter(f => !q || f.title.toLowerCase().includes(q))
       .filter(f => !F.watchOnly || isWatch(f.id));
-  films.sort((a,b) => by[b.id].length - by[a.id].length || a.title.localeCompare(b.title,"de"));
+  // Was bald oft läuft, steht oben – Vorverkäufe für in Wochen landen weiter unten
+  const wk = new Date(); wk.setDate(wk.getDate()+7);
+  const soon = `${wk.getFullYear()}-${pad(wk.getMonth()+1)}-${pad(wk.getDate())}`;
+  const rank = id => by[id].filter(s => s.start.slice(0,10) < soon).length;
+  films.sort((a,b) => rank(b.id) - rank(a.id) || by[a.id][0].start.localeCompare(by[b.id][0].start) || a.title.localeCompare(b.title,"de"));
 
   const ds = days(all);
   const active = F.cinemas.length + F.halls.length + F.tags.length;
   const down = D.cinemas.filter(c => !c.status || !c.status.ok);
+  // einzelne Tage, die ein Kino beim Abruf verweigert hat
+  const today = nowLocal().slice(0,10);
+  const gaps = D.cinemas.map(c => [c, ((c.status||{}).missingDays||[]).filter(d => d>=today && (F.day==="all" || F.day===d))])
+      .filter(([,m]) => m.length);
   const gen = new Date(D.generated);
 
   $("#view").innerHTML = `
@@ -297,6 +305,7 @@ function renderList(){
     </div>
   </div>
   ${down.length ? `<div class="notice">Gerade nicht abrufbar: ${down.map(c=>esc(c.name)).join(", ")}.</div>` : ""}
+  ${gaps.length ? `<div class="notice">Lücke im Programm: ${gaps.map(([c,m]) => `${esc(c.name)} ${m.map(d=>dayLabel(d)).join(", ")}`).join(" · ")} – <a href="${esc(gaps[0][0].web)}" target="_blank" rel="noopener">beim Kino ansehen</a></div>` : ""}
   <div class="count">${films.length} ${films.length===1?"Film":"Filme"} · ${shows.length} Vorstellungen</div>
   ${films.map(f => filmCard(f, by[f.id])).join("") || `<div class="empty">Nichts gefunden.<br>Filter lockern?</div>`}
   <div style="height:24px"></div>`;
