@@ -1,9 +1,7 @@
 // Offline-Fähigkeit: immer zuerst das Netz fragen (damit Updates sofort greifen),
 // bei schlechtem Empfang die zuletzt geladene Version aus dem Cache zeigen.
-const CACHE = "kino-hh-v2";
-const SHELL = ["./", "index.html", "data.json", "manifest.webmanifest", "icon.svg", "icon-180.png",
-  "fonts/fraunces-latin-wght-normal.woff2", "fonts/fraunces-latin-wght-italic.woff2",
-  "fonts/ibm-plex-mono-latin-500-normal.woff2", "fonts/ibm-plex-mono-latin-600-normal.woff2"];
+const CACHE = "kino-hh-v3";
+const SHELL = ["./", "index.html", "data.json", "manifest.webmanifest", "icon.svg", "icon-180.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
